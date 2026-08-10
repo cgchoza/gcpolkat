@@ -51,7 +51,7 @@ def main():
         '--xaxis BASELINE,BASELINE --yaxis CORRECTED_DATA:amp:YX,CORRECTED_DATA:amp:XY',
         '--xaxis uv,uv,uv,uv --yaxis CORRECTED_DATA:amp:XX,CORRECTED_DATA:amp:YY,CORRECTED_DATA:phase:XX,CORRECTED_DATA:phase:YY']
 
-    colour_by = ['--colour-by ANTENNA1 --cnum 64']
+    colour_by = ['--colour-by ANTENNA1 --cnum 64', '--colour-by SCAN_NUMBER --cnum 128 --suffix scan']
 
 #    shadems_base = 'shadems --profile --dir '+VISPLOTS+' '
     shadems_base = 'shadems --dir '+VISPLOTS+' '
@@ -65,3 +65,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

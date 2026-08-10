@@ -63,15 +63,14 @@ HIPPO_CONTAINER_PATH = None
 NODE_CONTAINER_PATH = [HOME+'/containers/', '/mnt/ephem/containers']
 
 
-PYTHON3_PATTERN = 'polkat-0.2.3'
-CASA_PATTERN = 'polkat-0.2.3'
-QUARTICAL_PATTERN = 'polkat-0.2.3'
-WSCLEAN_PATTERN = 'polkat-0.2.3'
-SHADEMS_PATTERN = 'polkat-0.2.3'
+PYTHON3_PATTERN = 'polkat-0.2.1'
+CASA_PATTERN = 'polkat-0.2.1'
+QUARTICAL_PATTERN = 'polkat-0.2.1'
+WSCLEAN_PATTERN = 'polkat-0.2.1'
+SHADEMS_PATTERN = 'polkat-0.2.1'
 ALBUS_PATTERN = 'polkat-albus'
-SPINIFEX_PATTERN = 'polkat-0.2.3'
-TRICOLOUR_PATTERN = 'polkat-0.2.3'
-MOVIE_PATTERN = 'polkat-0.2.3'
+TRICOLOUR_PATTERN = 'polkat-0.2.1'
+MOVIE_PATTERN = 'polkat-0.2.1'
 
 
 # ------------------------------------------------------------------------
@@ -216,7 +215,7 @@ PRE_TIMEBIN = '8s'                   # Integration time for working MS
 
 # Polarization calibrator info --- Must be in PRE_FIELDS, if left blank will assume no polarization angle calibration
 # https://science.nrao.edu/facilities/vla/docs/manuals/obsguide/modes/pol
-POLANG_NAME = 'J1331+3030'         # Specify the name of the field you want to use as a Polarization angle calibrator -- 3C286
+POLANG_NAME = '3C286'         # Specify the name of the field you want to use as a Polarization angle calibrator -- 3C286
 POLANG_DIR  = '13:31:08.2881,+30.30.32.959' # CASA Format
 POLANG_MOD  = [1.0, 0.0, 0.5, 0.0]
 XF_TARGET_POLANG = 30.0  # Expected INTRINSIC (i.e. correcting RM effects) linear polarization angle in degrees
@@ -232,8 +231,6 @@ XF_TARGET_RM = 0.0 # Guess for the intrinsic RM; for 'manual' XF determination a
 XF_MODE = 'auto' # options are: auto (RECOMMENDED: determine based on band and/or if there is large phase discontinuties), casa or  manual
 XF_AUTO_ANG_JUMP = 60.0 # angle in degrees where, if the CASA XF solver has adjacent solution intervals that have a discontinuity
                         # larger than this value, it will solve XF manually.
-XF_SKIP_KCROSS = True # weather to skip the cross-hand delay and only solve for the phase
-                      # my experimentation has found that some times this exclusion can give better solutions.
 
 # XF table targets
 XF_CHANINT = 16  # Channels per solution interval default is 1024 frequency channels so 1024 / 16 = 64 cross-hand phase intervals
@@ -246,11 +243,10 @@ XF_CLIP_WINDOW = 16  # Window size for local scatter analysis
 XF_EX = True          # Enable gap filling
 XF_EX_FRAC = 0.2      # Use 20% of good bandwidth for extrapolation
 XF_RM_ANG_MAX = 20.0  # Maximum separation an angle [deg] from a trial RM can have from XF_TARGET_POLANG to be considered a good solution
-XF_AVG_SCAN = False # If multi-scan, average XF solutions over all scans to increase SNR
-XF_POLY_CLIP = 4.0 
+XF_AVG_SCAN = True # If multi-scan, average XF solutions over all scans to increase SNR
 
 # Smoothing control for XF table creation and interpolation
-XF_USE_SMOOTHING = False  # Apply Savitzky-Golay smoothing before interpolation
+XF_USE_SMOOTHING = True  # Apply Savitzky-Golay smoothing before interpolation
 XF_SAVGOL_WINDOW = None  # Window length (odd integer); None=auto-calculate (recommended)
 XF_SAVGOL_POLYORDER = 3  # Polynomial order for Savitzky-Golay filter
 XF_DELTARM_TRIALS = [-7,7] # min/max atmospheric RM for trialling (21 trials between) with be XF_TARGET_RM + DeltaRM
@@ -259,11 +255,11 @@ XF_DELTARM_TRIALS = [-7,7] # min/max atmospheric RM for trialling (21 trials bet
 
 # Reference antennas
 CAL_1GC_REF_ANT = 'auto'             # Comma-separated list to manually specify refant(s)
-CAL_1GC_REF_POOL = ['m060','m061','m059','m058', 'm048', 'm062', 'm063'] 
+CAL_1GC_REF_POOL = ['m002', 'm023', 'm006', 'm020','m021'] 
                                      # Pool to re-order for reference antenna list for 'auto'
 
 # Field selection, IDs only at present. (Use tools/ms_info.py.)
-CAL_1GC_PRIMARY = 'auto'             # Primary calibrator field ID
+CAL_1GC_PRIMARY = '0'             # Primary calibrator field ID
 CAL_1GC_TARGETS = 'auto'             # Comma-separated target field IDs
 CAL_1GC_SECONDARIES = 'auto'         # Comma-separated secondary IDs
 
@@ -279,101 +275,98 @@ CAL_1GC_PRIMARY_MODEL = 'auto'       # setjy = use setjy component model only
 
 # GBK settings
 CAL_1GC_DELAYCUT = 2.5               # [now defunct] Jy at central freq. Do not solve for K on secondaries weaker than this
-CAL_1GC_FILLGAPS = 8                 # Maximum channel gap over which to interpolate bandpass solutions
+CAL_1GC_FILLGAPS = 0                 # Maximum channel gap over which to interpolate bandpass solutions
 
 # Band specific options
 
 if BAND == 'UHF':       
 
     CAL_1GC_FREQRANGE = '*:850~900MHz'        # Clean part of the band to use for generating UHF 1GC G-solutions
-    CAL_1GC_UVRANGE = '>300m'               # Selection for baselines to include during 1GC B/G solving (K excluded)
+    CAL_1GC_UVRANGE = '>150m'               # Selection for baselines to include during 1GC B/G solving (K excluded)
     CAL_1GC_0408_MODEL = ([27.907,0.0,0.0,0.0],[-1.205],'850MHz') # Defunct, Model now hardcoded into 1GC_0
 
     CAL_1GC_BAD_FREQS = ['*:540~570MHz',      # Lower band edge 
                         '*:1010~1150MHz']     # Upper band edge
 
-    CAL_1GC_BL_FLAG_UVRANGE = '<1000m'        # Baseline range for which BL_FREQS are flagged
+    CAL_1GC_BL_FLAG_UVRANGE = '<600'        # Baseline range for which BL_FREQS are flagged
     CAL_1GC_BL_FREQS = []            
 
 elif BAND == 'L':
 
     CAL_1GC_FREQRANGE = '*:1300~1400MHz'
-    CAL_1GC_UVRANGE = '>300m'
+    CAL_1GC_UVRANGE = '>150m'
     CAL_1GC_0408_MODEL = ([17.066,0.0,0.0,0.0],[-1.179],'1284MHz') # Defunct, Model now hardcoded into 1GC_05
 
     CAL_1GC_BAD_FREQS = ['*:850~900MHz',      # Lower band edge
                         '*:1650~1800MHz',     # Upper bandpass edge
                         '*:1419.8~1421.3MHz'] # Galactic HI 
 
-    CAL_1GC_BL_FLAG_UVRANGE = '<1000m'
+    CAL_1GC_BL_FLAG_UVRANGE = '<600'
     CAL_1GC_BL_FREQS = ['*:900MHz~915MHz',    # GSM and aviation
-                        '*:925MHz~960MHz',
-                        '*:935.40~960.05 MHz', # GSM (from katdal)
+                        '*:925MHz~960MHz',                
                         '*:1080MHz~1095MHz',
-                        '*:1145.85~1300.90 MHz', # GPS/GLONASS (from katdal)
-                        '*:1166MHz~1186MHz',
-                        '*:1191MHz~1217MHz',  # Galileo
-                        '*:1217MHz~1237MHz',
-                        '*:1242MHz~1249MHz',
-                        '*:1260MHz~1300MHz',
-                        '*:1375MHz~1387MHz',
-                        '*:1453MHz~1490MHz',  # Afristar
-                        '*:1519.35~1608.30 MHz', # GPS/GLONASS (from katdal)
-                        '*:1526MHz~1554MHz',  # Inmarsat
                         '*:1565MHz~1585MHz',  # GPS
+                        '*:1217MHz~1237MHz',
+                        '*:1375MHz~1387MHz',
+                        '*:1166MHz~1186MHz',
                         '*:1592MHz~1610MHz',  # GLONASS
-                        '*:1600MHz',                 # Alkantpan
-                        '*:1616MHz~1626MHz']  # Iridium
+                        '*:1242MHz~1249MHz',
+                        '*:1191MHz~1217MHz',  # Galileo
+                        '*:1260MHz~1300MHz',
+                        '*:1453MHz~1490MHz',  # Afristar
+                        '*:1616MHz~1626MHz',  # Iridium
+                        '*:1526MHz~1554MHz',  # Inmarsat
+                        '*:1600MHz']                 # Alkantpan
                                             # https://github.com/ska-sa/MeerKAT-Cookbook/blob/master/casa/L-band%20RFI%20frequency%20flagging.ipynb
 
 elif BAND == 'S0':
 
     CAL_1GC_FREQRANGE = '*:2300~2400MHz'
-    CAL_1GC_UVRANGE = '>300m'
+    CAL_1GC_UVRANGE = '>150m'
     CAL_1GC_0408_MODEL = ([9.193,0.0,0.0,0.0],[-1.144],'2187MHz') # Defunct, Model now hardcoded into 1GC_0
     CAL_1GC_BAD_FREQS = ['*:1700~1800MHz',    # Lower band edge 
                         '*:2500~2650MHz']     # Upper band edge
-    CAL_1GC_BL_FLAG_UVRANGE = '<1000m'
+    CAL_1GC_BL_FLAG_UVRANGE = '<600'
     CAL_1GC_BL_FREQS = []
 
 elif BAND == 'S1':
 
     CAL_1GC_FREQRANGE = ''
-    CAL_1GC_UVRANGE = '>300m'
+    CAL_1GC_UVRANGE = '>150m'
     CAL_1GC_0408_MODEL = ([8.244,0.0,0.0,0.0],[-1.138],'2406MHz')    # Defunct, Model now hardcoded into 1GC_0
     CAL_1GC_BAD_FREQS = ['*:1967~2056MHz',    # Lower band edge 
                         '*:2756~2845MHz']     # Upper band edge
-    CAL_1GC_BL_FLAG_UVRANGE = '<1000m'
+    CAL_1GC_BL_FLAG_UVRANGE = '<600'
     CAL_1GC_BL_FREQS = []
 
 elif BAND == 'S2':
 
     CAL_1GC_FREQRANGE = ''
-    CAL_1GC_UVRANGE = '>300m'
+    CAL_1GC_UVRANGE = '>150m'
     CAL_1GC_0408_MODEL = ([7.468,0.0,0.0,0.0],[-1.133],'2625MHz')    # Defunct, Model now hardcoded into 1GC_0
     CAL_1GC_BAD_FREQS = ['*:2187~2275MHz',    # Lower band edge 
                         '*:2975~3063MHz']     # Upper band edge
-    CAL_1GC_BL_FLAG_UVRANGE = '<1000m'
+    CAL_1GC_BL_FLAG_UVRANGE = '<600'
     CAL_1GC_BL_FREQS = []
 
 elif BAND == 'S3':
 
     CAL_1GC_FREQRANGE = ''
-    CAL_1GC_UVRANGE = '>300m'
+    CAL_1GC_UVRANGE = '>150m'
     CAL_1GC_0408_MODEL = ([6.822,0.0,0.0,0.0],[-1.128],'2483MHz')   # Defunct, Model now hardcoded into 1GC_0
     CAL_1GC_BAD_FREQS = ['*:2405~2493MHz',    # Lower band edge 
                         '*:3194~3282MHz']     # Upper band edge
-    CAL_1GC_BL_FLAG_UVRANGE = '<1000m'
+    CAL_1GC_BL_FLAG_UVRANGE = '<600'
     CAL_1GC_BL_FREQS = []
 
 elif BAND == 'S4':
 
     CAL_1GC_FREQRANGE = '*:2900~3000MHz'
-    CAL_1GC_UVRANGE = '>300m'     
+    CAL_1GC_UVRANGE = '>150m'     
     CAL_1GC_0408_MODEL = ([6.423,0.0,0.0,0.0],[-1.124],'3000MHz')   # Defunct, Model now hardcoded into 1GC_0
     CAL_1GC_BAD_FREQS = ['*:2600~2690MHz',    # Lower band edge 
                         '*:3420~3600MHz']     # Upper band edge
-    CAL_1GC_BL_FLAG_UVRANGE = '<1000m'
+    CAL_1GC_BL_FLAG_UVRANGE = '<600'
     CAL_1GC_BL_FREQS = []
 
 
@@ -425,11 +418,11 @@ WSC_SOURCELIST = False
 WSC_FIELD = 0
 WSC_STARTCHAN = -1
 WSC_ENDCHAN = -1
-WSC_MINUVL = ''
+WSC_MINUVL = '100'
 WSC_MAXUVL = ''
 WSC_EVEN = False
 WSC_ODD = False
-WSC_TUKEYTAPER = False
+WSC_TUKEYTAPER = True
 WSC_TAPERMASK = False
 WSC_INTERVAL0 = None
 WSC_INTERVAL1 = None
@@ -452,7 +445,7 @@ WSC_IDGMODE = 'CPU'
 WSC_PREDICTCHANNELS = 64
 WSC_PARALLELGRIDDING = 8
 # Weighting
-WSC_WEIGHT = 'briggs 0.0'
+WSC_WEIGHT = 'briggs -1.0'
 WSC_WEIGHT_CAL = 'uniform'
 WSC_TAPERGAUSSIAN = ''
 WSC_MFWEIGHT = True
@@ -461,7 +454,7 @@ WSC_UNIFORM_IMAGE = True
 WSC_WEIGHT_HIGHRES = 'uniform' # pick a more uniform weighting then WSC_WEIGHT -- uniform weight by default
 # Deconvolution
 WSC_PARALLELDECONVOLUTION = 2560
-WSC_MULTISCALE = False
+WSC_MULTISCALE = True
 WSC_SCALES = '0,3,9'
 WSC_MULTISCALE_BIAS = 0.7
 WSC_CHANDECONV = False
@@ -482,18 +475,18 @@ WSC_POL = 'IQUV'
 WSC_SPLITPOL = False # Image V/I and Q/U separately (necessary for High RM and MFS fitting)
 WSC_JOINPOLARIZATIONS = True
 WSC_SQUAREPOLARIZATIONS = False
-WSC_LOCALRMS_STRENGTH = 0.25
 # Masking for BLIND mask creation
-WSC_AUTOMASK_BLIND = 5.0
-WSC_AUTOTHRESHOLD_BLIND = 1.0
+WSC_AUTOMASK_BLIND = 10.0
+WSC_AUTOTHRESHOLD_BLIND = 2.0
 WSC_THRESHOLD_BLIND = False
-WSC_LOCALRMS_BLIND = True
+WSC_LOCALRMS_BLIND = False
+WSC_LOCALRMS_STRENGTH = 2
 # Masking for SCIENCE
 WSC_MASK = False
 WSC_THRESHOLD = False
-WSC_SHALLOWMASK = 35.0
-WSC_AUTOMASK = 4.0
-WSC_AUTOTHRESHOLD = 1.0
+WSC_SHALLOWMASK = 50.0
+WSC_AUTOMASK = 10.0
+WSC_AUTOTHRESHOLD = 3.0
 WSC_LOCALRMS = False
 # Determines if you want to Homogenize the resolution
 WSC_HOMOGENIZEBEAM = False # Homogenize in freq
@@ -735,7 +728,6 @@ SNAP_MODELIDENTIFIER = 'pcalmask' # identifier for image name following oxkat/po
 SNAP_MODELMASK = '' # Point to mask for initial model creation (or just don't delete the pcalmask model)
 SNAP_DECONV = False # Deconvolve during the snapshot imaging process? -- rarely necessary
 SNAP_DECONVMASK = '' # mask to use when doing snapshot imaging and deconvolving
-SNAP_RESTORE_MFS_ONLY = False # Only restore the MFS model image from the snapshot imaging, rather than also outputting the per-channel snapshot images
 
 # ------------------------------------------------------------------------
 #
