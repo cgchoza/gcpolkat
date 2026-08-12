@@ -76,6 +76,7 @@ gapfill = CAL_1GC_FILLGAPS
 myuvrange = CAL_1GC_UVRANGE 
 myspw = CAL_1GC_FREQRANGE
 
+tt = stamp()
 
 # ============================================================ #
 # ------------------ CONTROLLED-FIX CONFIG ------------------- #
@@ -188,6 +189,14 @@ dftab  = GAINTABLES+'/cal_1GC_'+myms+FIX_TABLE_TAG+'.Df'
 kcross  = GAINTABLES+'/cal_1GC_'+myms+FIX_TABLE_TAG+'.KCROSS'
 xftab  = GAINTABLES+'/cal_1GC_'+myms+FIX_TABLE_TAG+'.Xf'
 
+# >>> FRAME FIX: second-pass cross-hand-frame tables
+dftab2 = GAINTABLES+'/cal_1GC_'+myms + FIX_TABLE_TAG +'.Df2'
+xftab2 = GAINTABLES+'/cal_1GC_'+myms + FIX_TABLE_TAG +'.Xf2'
+
+# >>> FRAME FIX: Df table used in the FINAL applycals. Defaults to the
+# >>> original Df (correct for the manual_XF/Xf-only branch); switched to
+# >>> Df2 when the CASA KCROSS+Xf path is used.
+dftab_final = dftab
 # Restore the auto_cal flag version
 flagmanager(vis=myms,
         mode='restore',
@@ -201,6 +210,12 @@ if os.path.isdir(ftab0):
 if os.path.isdir(ftab):
     print(f"Removing: {ftab}")
     shutil.rmtree(ftab)
+
+# >>> FRAME FIX: remove stale second-pass tables from previous runs
+for stale_tab in [dftab2, xftab2]:
+    if os.path.isdir(stale_tab):
+        print(f"Removing: {stale_tab}")
+        shutil.rmtree(stale_tab)
 
 # ------- Set BP calibrator models
 
@@ -914,11 +929,21 @@ if pacal_name != '':
         XF_MODE = 'auto'
 
     manual_XF = False
+
+    # >>> FRAME FIX: scan selection carried through to the Xf2 re-solve
+    # >>> (populated if the continuity check rebuilds tables from a
+    # >>> subset of scans)
+    xf_scan_sel = ''
+
     if XF_MODE == 'casa' or XF_MODE == 'auto':
 
         print(f"Cross-hand phase mode if {XF_MODE}; solving CASA based solutions")
         
         # ------- KCROSS (polcal; apply Bp, Df (primary), Ga, K, Gp (polcal))
+        # >>> NOTE: KCROSS is solved with the (phase-wound) Df applied. The
+        # >>> wound D-terms exactly cancel the leakage in the cross-hands
+        # >>> first, so the delay fitted here is unbiased. It is therefore
+        # >>> NOT re-solved after Df2 exists.
         gaincal(vis = myms,
             field = pacal_name,
         #    uvrange = myuvrange,
@@ -934,6 +959,9 @@ if pacal_name != '':
             append = False)
 
         # -------- Xf (polcal; apply Bp, Df (primary), Ga, Gp, K, KCROSS (polcal))
+        # >>> NOTE: this first-pass Xf is fit to beat-contaminated data
+        # >>> (wound Df meets KCROSS-corrected data). It is kept only for
+        # >>> the continuity check below and is superseded by Xf2.
 
         polcal(vis = myms,
             field = pacal_name,
@@ -1041,6 +1069,9 @@ if pacal_name != '':
                 gainfield=[pacal_name,pacal_name,bpcal_name, pacal_name, bpcal_name, pacal_name],
                 interp = ['linear','linear','linear','linear','linear', 'linear'],
                 append = False)
+
+            # >>> FRAME FIX: remember the scan selection for the Xf2 re-solve
+            xf_scan_sel = ','.join(map(str, continuous_scans))
             
         else:
             # Case 3: No scans are continuous
@@ -1077,6 +1108,95 @@ if pacal_name != '':
         cross_field = [pacal_name]
         cross_interp = ['linear']     
 
+    # ------------------------------------------------------------------ #
+    # >>> FRAME FIX: re-solve Df and Xf in the KCROSS frame               #
+    # ------------------------------------------------------------------ #
+    # Only when the CASA KCROSS+Xf path is in use (kcross in cross_table).
+    # The manual_XF branch is Xf-only: X-type terms peel sky-side of D, so
+    # the winding absorbed by Df meets wound data at apply time and cancels
+    # exactly -- that branch needs (and gets) no change.
+    #
+    # Rationale for this order:
+    #  * Df2 on the bpcal with KCROSS applied: KCROSS (K-type,
+    #    instrument-side of D) corrects the DATA before the D solve, so
+    #    Df2 is solved in exactly the cross-hand state the data will be in
+    #    when D is peeled at final apply. The unpolarized bpcal model has
+    #    zero cross-hands, so Xf (sky-side, corrupts the MODEL) is
+    #    irrelevant to this solve -- no circularity.
+    #  * Xf2 on the pacal with Df2 + KCROSS applied: leakage now cancels
+    #    correctly before the cross-hand phase is fit, removing the
+    #    ~1/dtau beat that contaminated the first-pass Xf.
+    #  * KCROSS is NOT re-solved: it was fit after the wound Df had
+    #    already removed the leakage from the cross-hands, so its delay
+    #    is unbiased.
+
+    if kcross in cross_table:
+
+        print("\n" + "="*60)
+        print("FRAME FIX: re-solving Df (-> Df2) with KCROSS applied")
+        print("="*60)
+
+        polcal(vis = myms,
+            field = bpcal_name,
+            uvrange = myuvrange,
+            caltable = dftab2,
+            refant = str(ref_ant),
+            solint = 'inf',
+            poltype='Df',
+            combine = 'scan',
+            gaintable=[ktab, gptab, bptab, gatab, kcross],
+            gainfield=[bpcal_name, bpcal_name, bpcal_name, bpcal_name, pacal_name],
+            interp=['linear','linear','linear','linear','linear'],
+            append = False)
+
+        flagdata(vis=dftab2, mode='clip', clipminmax=[0.0,0.1],
+            flagbackup=False, datacolumn='CPARAM')
+
+        print("\n" + "="*60)
+        print("FRAME FIX: re-solving Xf (-> Xf2) with Df2 + KCROSS applied")
+        print("="*60)
+
+        polcal(vis = myms,
+            field = pacal_name,
+            scan = xf_scan_sel,
+            uvrange = myuvrange,
+            caltable = xftab2,
+            refant = str(ref_ant),
+            solint = f'inf,{XF_CHANINT}ch',
+            poltype='Xf',
+            combine = '',
+            gaintable=[ktab, gptab, bptab, gatab, dftab2, kcross],
+            gainfield=[pacal_name, pacal_name, bpcal_name, pacal_name, bpcal_name, pacal_name],
+            interp=['linear','linear','linear','linear','linear','linear'],
+            append = False)
+
+        # Informational continuity report on Xf2 (no fallback action):
+        # with the beat removed this should be dramatically smoother than
+        # the first-pass Xf.
+        tb.open(xftab2)
+        gains2 = tb.getcol('CPARAM')
+        flags2 = tb.getcol('FLAG')
+        scans2 = tb.getcol('SCAN_NUMBER')
+        tb.close()
+        for scan in np.unique(scans2):
+            scan_mask = (scans2 == scan)
+            scan_gains = np.nanmedian(gains2[0, :, scan_mask].T, axis=-1)
+            scan_flags = np.nanmedian(flags2[0, :, scan_mask].T, axis=-1).astype(bool)
+            scan_gains = scan_gains[~scan_flags]
+            phases = np.angle(scan_gains)
+            phase_diffs = np.diff(phases)
+            phase_diffs = np.arctan2(np.sin(phase_diffs), np.cos(phase_diffs))
+            max_jump = np.max(np.abs(np.degrees(phase_diffs)))
+            print(f"Xf2 scan {scan}: max channel-to-channel jump = {max_jump:.2f} deg")
+
+        # Swap the second-pass tables into the final apply configuration
+        cross_table = [kcross, xftab2]
+        cross_field = [pacal_name, pacal_name]
+        cross_interp = ['linear', 'linear']
+        dftab_final = dftab2
+
+        print(f"FRAME FIX: final applycals will use {dftab2} and {xftab2}")
+
 
 # ------------------------------------------------------------------------------ #
 # ------------------------------------------------------------------------------ #
@@ -1084,17 +1204,28 @@ if pacal_name != '':
 # ------------------------------------------------------------------------------ #
 # ------------------------------------------------------------------------------ #
 
-# ------- BPCAL
+# >>> FRAME FIX: the unconditional bpcal applycal (without cross-hand
+# >>> tables) previously lived here. It has been moved into the two
+# >>> branches below so that, in the full-polarization path, the bpcal is
+# >>> corrected with the SAME cross-hand tables as every other field --
+# >>> otherwise its "clean" corrected data sit in a different cross-hand
+# >>> frame from the rest of the MS.
 
-applycal(vis = myms,
-    gaintable = [ktab,gptab,bptab,ftab,dftab],
- #  sapplymode='calflagstrict',
-    field = bpcal_name,
-    #calwt = False,
-    parang = True,
-    gainfield = [bpcal_name,bpcal_name, bpcal_name, bpcal_name, bpcal_name],
-    interp = ['linear','linear','linear','linear','linear'],
-    flagbackup=False)
+# ----- If no polarization angle calibrator apply subset of tables and kill script
+
+if pacal_name == '':   
+
+    # ------- BPCAL
+
+    applycal(vis = myms,
+        gaintable = [ktab,gptab,bptab,ftab,dftab],
+     #  sapplymode='calflagstrict',
+        field = bpcal_name,
+        #calwt = False,
+        parang = True,
+        gainfield = [bpcal_name,bpcal_name, bpcal_name, bpcal_name, bpcal_name],
+        interp = ['linear','linear','linear','linear','linear'],
+        flagbackup=False)
 
 
 # ----- If no polarization angle calibrator apply subset of tables and kill script
@@ -1163,6 +1294,20 @@ if pacal_name == '':
 
 # -------- Full polarization 
 
+# ------- BPCAL
+# >>> FRAME FIX: bpcal now receives the cross-hand tables and Df2, same
+# >>> frame as every other field.
+
+applycal(vis = myms,
+ #  sapplymode='calflagstrict',
+    field = bpcal_name,
+    #calwt = False,
+    parang = True,
+    gaintable = [ktab,gptab,bptab,ftab,dftab_final] + cross_table,
+    gainfield = [bpcal_name,bpcal_name, bpcal_name, bpcal_name, bpcal_name] + cross_field,
+    interp = ['linear','linear','linear','linear','linear'] + cross_interp,
+    flagbackup=False)
+
 # ------- PACAL
 
 applycal(vis = myms,
@@ -1170,7 +1315,7 @@ applycal(vis = myms,
         field = pacal_name,
         #calwt = False,
         parang = True,
-        gaintable = [ktab,gptab,bptab,ftab,dftab] + cross_table,
+        gaintable = [ktab,gptab,bptab,ftab,dftab_final] + cross_table,
         gainfield = [pacal_name,pacal_name, bpcal_name, pacal_name, bpcal_name] + cross_field,
         interp = ['linear','linear','linear','linear','linear'] + cross_interp,
         flagbackup=False)
@@ -1191,7 +1336,7 @@ for i in range(0,len(pcal_names)):
         field = pcal,
         #calwt = False,
         parang = True,
-        gaintable = [ktab,gptab,bptab,ftab,dftab] + cross_table,
+        gaintable = [ktab,gptab,bptab,ftab,dftab_final] + cross_table,
         gainfield = [pcal,pcal, bpcal_name, pcal, bpcal_name] + cross_field,
         interp = ['linear','linear','linear','linear','linear'] + cross_interp,
         flagbackup=False)
@@ -1207,7 +1352,7 @@ for i in range(0,len(targets)):
                 field=target,
                 #calwt=False,
                 parang=True,
-                gaintable = [ktab,gptab,bptab,ftab,dftab] + cross_table,
+                gaintable = [ktab,gptab,bptab,ftab,dftab_final] + cross_table,
                 gainfield = [related_pcal, related_pcal, bpcal_name, related_pcal, bpcal_name] + cross_field,
                 interp = ['linear','linear','linear','linear','linear'] + cross_interp,
                 flagbackup=False)
@@ -1242,3 +1387,4 @@ flagmanager(vis=myms,
 flagmanager(vis=myms,
     mode='save',
     versionname='1GC_flags')
+
