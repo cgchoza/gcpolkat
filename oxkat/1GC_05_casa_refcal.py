@@ -264,17 +264,9 @@ elif primary_tag == 'other':
 for i in range(0,len(pcal_names)):
     pcal = pcal_names[i]
     if pcal != bpcal_name:
-        # MODIFIED (FIX_3C286_MODEL): the pol-angle calibrator (3C286) is a
-        # known flux+polarization standard, so give it a physical Perley-Butler
-        # 2013 Stokes-I spectrum here. This is the model the amplitude (Ga)
-        # self-cal sees; the flat [1,0,0,0] used previously left a spectral
-        # slope in the residuals, producing a noisy per-scan Ga and the
-        # spurious per-scan amplitude offset. Polarization is added later, just
-        # before the cross-hand solve (Q=U=0 here is deliberate: gaintype='T'
-        # sums the parallel hands, so pol would cancel anyway, and keeping it
-        # clean avoids any parang-frame subtlety in the amplitude solve).
-        # Other (unknown-flux) secondaries keep the flat model and are
-        # bootstrapped by fluxscale as before.
+        # MODIFIED (FIX_3C286_MODEL): adding a Perley-Butler model here, 
+        # suspicion is that solving with incorrect model causes parang
+        # variation to be baked into 3c286 gain table
         if FIX_3C286_MODEL and pcal == pacal_name:
             setjy(vis=myms,
                 field=pcal,
@@ -1076,16 +1068,15 @@ if pacal_name != '':
         cross_interp = ['linear']     
 
     # ------------------------------------------------------------------ #
-    # >>> Re solve Df and Xf in the kcross frame         #
+    # >>> Re solve Df and Xf after kcross       #
     # ------------------------------------------------------------------ #
     # Only when the CASA KCROSS+Xf path is in use (kcross in cross_table).
     # The manual_XF branch is Xf-only
     #
     # Rationale for this order:
-    #  * Df2 on the bpcal with KCROSS applied: KCROSS (K-type,
-    #    instrument-side of D) corrects the DATA before the D solve, so
-    #    Df2 is solved in exactly the cross-hand state the data will be in
-    #    when Df is applied in the final apply.
+    #  * Df2 on the bpcal with KCROSS applied: KCROSS corrects the DATA 
+    #    before the D solve, so Df2 is solved in exactly the cross-hand 
+    #    state the data will be in when Df is applied in the final apply.
     #  * Xf2 on the pacal with Df2 + KCROSS applied: leakage now cancels
     #    correctly before the cross-hand phase is fit, removing the
     #    ~1/dtau beat that contaminated the first-pass Xf.
