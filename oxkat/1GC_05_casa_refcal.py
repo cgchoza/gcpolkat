@@ -7,11 +7,7 @@
 #
 # This version adds an spw-RESTRICTED mode for the CPARAM solution-table
 # flagging, so tfcrop/rflag still remove RFI-corrupted solutions across the
-# BODY of the band but never touch the outer channels, where tfcrop's
-# piecewise-polynomial fit is least valid and its per-timestep noise
-# threshold least appropriate -- which is what was over-flagging the band
-# edge and starving the solve for whichever antennas tipped over the
-# threshold first. Applies uniformly to all antennas; no names hard-coded.
+# BODY of the band but never touch the outer channels.
 #
 # CPARAM flagging now has three modes, set in the config block below:
 #   FIX_DISABLE_CPARAM_FLAGGING = True                 -> off entirely
@@ -19,20 +15,6 @@
 #                                                      -> flag interior only
 #   FIX_DISABLE_CPARAM_FLAGGING = False, CPARAM_FLAG_SPW = ''
 #                                                      -> full band (original)
-#
-# The 3C286 model is now set in TWO consistent places (see FIX_3C286_MODEL):
-#   - the secondary/pol-cal setjy loop gives 3C286 a physical Perley-Butler
-#     2013 Stokes-I spectrum for the amplitude (Ga) self-cal, instead of the
-#     flat [1,0,0,0] that produced a noisy, ill-conditioned per-scan Ga and a
-#     spurious per-scan amplitude offset;
-#   - the cross-hand block sets a correct linear-polarization model
-#     (fractional pol + EVPA) for the KCROSS/Xf solve, REPLACING the flat
-#     POLANG_MOD reset (which was [1,0,0.5,0] = 50% pol at EVPA 45 deg and
-#     biased the EVPA reference). Note POLANG_MOD would otherwise clobber any
-#     earlier model change, so it is only used when FIX_3C286_MODEL = False.
-#
-# Everything else (Df, secondaries, fluxscale, cross-hand/PA cal, applycal)
-# is otherwise identical to the original 1GC_05 script.
 #
 # To reproduce the ORIGINAL pipeline exactly:
 #     FIX_BANDPASS_COMBINE          = ''
@@ -109,22 +91,12 @@ CPARAM_FLAG_SPW = '0:40~870'
 FIX_TABLE_TAG = '_spwedge'
 
 # 3C286 model fix. Original: False.
-# When True: give the pol-angle calibrator (3C286) a physical Perley-Butler
-# 2013 Stokes-I spectrum for the amplitude self-cal (was a flat [1,0,0,0],
-# which produced a noisy, ill-conditioned per-scan Ga and a spurious per-scan
-# amplitude offset), and a correct linear-polarization model (fractional pol +
-# EVPA) for the cross-hand solve, replacing the flat POLANG_MOD reset (was
-# [1,0,0.5,0] = 50% pol at EVPA 45 deg, which biased the EVPA reference).
-# ASSUMES the pol-angle calibrator is a Perley-Butler standard (e.g. 3C286);
-# the polarization numbers used below are 3C286 L-band values -- confirm them
-# against Perley-Butler / SARAO before trusting absolute polarization angles.
 FIX_3C286_MODEL = True
 
 # 3C286 linear-polarization model, used ONLY for the cross-hand (KCROSS/Xf)
 # solve when FIX_3C286_MODEL is True. The Stokes-I flux/spectrum here is a
 # placeholder: 3C286's flux is fixed by Perley-Butler 2013 (amplitude solve)
-# and fluxscale, so I0/spix below do NOT set the flux scale. Only POLINDEX
-# (fractional linear pol) and POLANGLE (EVPA) matter for KCROSS/Xf.
+# and fluxscale, so I0/spix below do NOT set the flux scale.
 #   >>> CONFIRM against Perley-Butler / SARAO for 3C286 at L-band <<<
 # C286_REFFREQ  = '1.45GHz'
 C286_I0       = 14.9          # Jy near reffreq (non-critical; see note above)
@@ -189,13 +161,10 @@ dftab  = GAINTABLES+'/cal_1GC_'+myms+FIX_TABLE_TAG+'.Df'
 kcross  = GAINTABLES+'/cal_1GC_'+myms+FIX_TABLE_TAG+'.KCROSS'
 xftab  = GAINTABLES+'/cal_1GC_'+myms+FIX_TABLE_TAG+'.Xf'
 
-# >>> FRAME FIX: second-pass cross-hand-frame tables
 dftab2 = GAINTABLES+'/cal_1GC_'+myms + FIX_TABLE_TAG +'.Df2'
 xftab2 = GAINTABLES+'/cal_1GC_'+myms + FIX_TABLE_TAG +'.Xf2'
 
-# >>> FRAME FIX: Df table used in the FINAL applycals. Defaults to the
-# >>> original Df (correct for the manual_XF/Xf-only branch); switched to
-# >>> Df2 when the CASA KCROSS+Xf path is used.
+
 dftab_final = dftab
 # Restore the auto_cal flag version
 flagmanager(vis=myms,
@@ -211,7 +180,6 @@ if os.path.isdir(ftab):
     print(f"Removing: {ftab}")
     shutil.rmtree(ftab)
 
-# >>> FRAME FIX: remove stale second-pass tables from previous runs
 for stale_tab in [dftab2, xftab2]:
     if os.path.isdir(stale_tab):
         print(f"Removing: {stale_tab}")
@@ -896,7 +864,8 @@ else:
 if pacal_name != '':
  
     # ------- Set PA calibrator models
-    # MODIFIED (FIX_3C286_MODEL): use a correct 3C286 linear-polarization model
+    # MODIFIED (FIX_3C286_MODEL): use a derived (NO IONOSPHERIC CORRECTIONS)
+    # 3C286 linear-polarization model
     # for the cross-hand (KCROSS/Xf) solve. This REPLACES the flat POLANG_MOD
     # reset, which set [1,0,0.5,0] = 50% pol at EVPA 45 deg and biased the EVPA
     # reference. NB: POLANG_MOD would also clobber the Perley-Butler Stokes-I
@@ -930,9 +899,7 @@ if pacal_name != '':
 
     manual_XF = False
 
-    # >>> FRAME FIX: scan selection carried through to the Xf2 re-solve
-    # >>> (populated if the continuity check rebuilds tables from a
-    # >>> subset of scans)
+
     xf_scan_sel = ''
 
     if XF_MODE == 'casa' or XF_MODE == 'auto':
@@ -1070,7 +1037,7 @@ if pacal_name != '':
                 interp = ['linear','linear','linear','linear','linear', 'linear'],
                 append = False)
 
-            # >>> FRAME FIX: remember the scan selection for the Xf2 re-solve
+        
             xf_scan_sel = ','.join(map(str, continuous_scans))
             
         else:
@@ -1109,31 +1076,27 @@ if pacal_name != '':
         cross_interp = ['linear']     
 
     # ------------------------------------------------------------------ #
-    # >>> FRAME FIX: re-solve Df and Xf in the KCROSS frame               #
+    # >>> Re solve Df and Xf in the kcross frame         #
     # ------------------------------------------------------------------ #
     # Only when the CASA KCROSS+Xf path is in use (kcross in cross_table).
-    # The manual_XF branch is Xf-only: X-type terms peel sky-side of D, so
-    # the winding absorbed by Df meets wound data at apply time and cancels
-    # exactly -- that branch needs (and gets) no change.
+    # The manual_XF branch is Xf-only
     #
     # Rationale for this order:
     #  * Df2 on the bpcal with KCROSS applied: KCROSS (K-type,
     #    instrument-side of D) corrects the DATA before the D solve, so
     #    Df2 is solved in exactly the cross-hand state the data will be in
-    #    when D is peeled at final apply. The unpolarized bpcal model has
-    #    zero cross-hands, so Xf (sky-side, corrupts the MODEL) is
-    #    irrelevant to this solve -- no circularity.
+    #    when Df is applied in the final apply.
     #  * Xf2 on the pacal with Df2 + KCROSS applied: leakage now cancels
     #    correctly before the cross-hand phase is fit, removing the
     #    ~1/dtau beat that contaminated the first-pass Xf.
     #  * KCROSS is NOT re-solved: it was fit after the wound Df had
     #    already removed the leakage from the cross-hands, so its delay
-    #    is unbiased.
+    #    should be unbiased.
 
     if kcross in cross_table:
 
         print("\n" + "="*60)
-        print("FRAME FIX: re-solving Df (-> Df2) with KCROSS applied")
+        print("Re-solving Df (-> Df2) with KCROSS applied")
         print("="*60)
 
         polcal(vis = myms,
@@ -1153,7 +1116,7 @@ if pacal_name != '':
             flagbackup=False, datacolumn='CPARAM')
 
         print("\n" + "="*60)
-        print("FRAME FIX: re-solving Xf (-> Xf2) with Df2 + KCROSS applied")
+        print("Re-solving Xf (-> Xf2) with Df2 + KCROSS applied")
         print("="*60)
 
         polcal(vis = myms,
@@ -1170,9 +1133,6 @@ if pacal_name != '':
             interp=['linear','linear','linear','linear','linear','linear'],
             append = False)
 
-        # Informational continuity report on Xf2 (no fallback action):
-        # with the beat removed this should be dramatically smoother than
-        # the first-pass Xf.
         tb.open(xftab2)
         gains2 = tb.getcol('CPARAM')
         flags2 = tb.getcol('FLAG')
@@ -1195,7 +1155,7 @@ if pacal_name != '':
         cross_interp = ['linear', 'linear']
         dftab_final = dftab2
 
-        print(f"FRAME FIX: final applycals will use {dftab2} and {xftab2}")
+        print(f"Final applycals will use {dftab2} and {xftab2}")
 
 
 # ------------------------------------------------------------------------------ #
@@ -1203,13 +1163,6 @@ if pacal_name != '':
 # --------------------------- Applycal (All Fields)  ----------------------- #
 # ------------------------------------------------------------------------------ #
 # ------------------------------------------------------------------------------ #
-
-# >>> FRAME FIX: the unconditional bpcal applycal (without cross-hand
-# >>> tables) previously lived here. It has been moved into the two
-# >>> branches below so that, in the full-polarization path, the bpcal is
-# >>> corrected with the SAME cross-hand tables as every other field --
-# >>> otherwise its "clean" corrected data sit in a different cross-hand
-# >>> frame from the rest of the MS.
 
 # ----- If no polarization angle calibrator apply subset of tables and kill script
 
@@ -1295,17 +1248,15 @@ if pacal_name == '':
 # -------- Full polarization 
 
 # ------- BPCAL
-# >>> FRAME FIX: bpcal now receives the cross-hand tables and Df2, same
-# >>> frame as every other field.
 
 applycal(vis = myms,
  #  sapplymode='calflagstrict',
     field = bpcal_name,
     #calwt = False,
     parang = True,
-    gaintable = [ktab,gptab,bptab,ftab,dftab_final] + cross_table,
-    gainfield = [bpcal_name,bpcal_name, bpcal_name, bpcal_name, bpcal_name] + cross_field,
-    interp = ['linear','linear','linear','linear','linear'] + cross_interp,
+    gaintable = [ktab,gptab,bptab,ftab,dftab_final],
+    gainfield = [bpcal_name,bpcal_name, bpcal_name, bpcal_name, bpcal_name],
+    interp = ['linear','linear','linear','linear','linear'],
     flagbackup=False)
 
 # ------- PACAL
