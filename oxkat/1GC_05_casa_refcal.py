@@ -80,18 +80,16 @@ FIX_DISABLE_CPARAM_FLAGGING = False
 
 # spw/channel selection for the CPARAM flagging. '' = full band (original).
 # A selection restricts flagging to the interior, protecting the outer
-# channels where tfcrop misbehaves. At 1024ch, '0:40~980' protects ~40 ch
-# each side; TUNE the upper bound against the raw-SNR curve and the 1827
-# residual check -- set it to the channel below which you still trust the
-# per-visibility SNR (~4 at the very top for this observation).
-CPARAM_FLAG_SPW = '0:40~870'
+# channels where tfcrop misbehaves. Finicky, and requires per-MS channel
+# tuning to avoid leaving RFI unflagged.
+CPARAM_FLAG_SPW = ''
 
 # Suffix on every gain-table name so runs never clobber each other.
 # Original: ''.
-FIX_TABLE_TAG = '_spwedge'
+FIX_TABLE_TAG = ''
 
-# 3C286 model fix. Original: False.
-FIX_3C286_MODEL = True
+# 3C286 model fix. Original: False. Best to leave unset.
+FIX_3C286_MODEL = False
 
 # 3C286 linear-polarization model, used ONLY for the cross-hand (KCROSS/Xf)
 # solve when FIX_3C286_MODEL is True. The Stokes-I flux/spectrum here is a

@@ -164,27 +164,32 @@ def main():
                 step['id'] = 'WSDBL'+code
                 step['slurm_config'] = cfg.SLURM_WSCLEAN
                 step['pbs_config'] = cfg.PBS_WSCLEAN
-                absmem = gen.absmem_helper(step,INFRASTRUCTURE,cfg.WSC_ABSMEM)
-                syscall = ''
                 prefix = CONTAINER_RUNNER+WSCLEAN_CONTAINER+' ' if USE_SINGULARITY else ''
-                imcall = gen.generate_syscall_wsclean(mslist = [myms],
-                        imgname = img_prefix,
-                        datacol = 'DATA',
-                        chanout = cfg.WSC_BLIND_CHANNELSOUT,
-                        nomodel = True,
-                        pol = 'I',
-                        intervalsout = False,
-                        mfweight = True,
-                        localrms = cfg.WSC_LOCALRMS_BLIND,
-                        automask = cfg.WSC_AUTOMASK_BLIND,
-                        autothreshold = cfg.WSC_AUTOTHRESHOLD_BLIND,
-                        threshold = cfg.WSC_THRESHOLD_BLIND,
-                        tukeytaper=tukeytaper,
-                        minuvl = minuvl,
-                        maxuvl = maxuvl,
-                        absmem = absmem)
-                for call in imcall: 
-                    syscall += prefix + call + '\n\n'
+                cmd = ('wsclean -log-time '
+                       f'-mem {cfg.WSC_MEM} '
+                       f'-parallel-reordering {cfg.WSC_PARALLELREORDERING} '
+                       f'-parallel-gridding {cfg.WSC_PARALLELGRIDDING} '
+                       f'-name {img_prefix} '
+                       '-save-source-list '
+                       '-data-column DATA '
+                       f'-field {cfg.WSC_FIELD} '
+                       f'-size {cfg.WSC_IMSIZE} {cfg.WSC_IMSIZE} '
+                       f'-scale {cfg.WSC_CELLSIZE} '
+                       '-gridder wgridder '
+                       '-no-update-model-required '
+                       f'-weight {cfg.WSC_WEIGHT} '
+                       f'-parallel-deconvolution {cfg.WSC_PARALLELDECONVOLUTION} '
+                       f'-multiscale -multiscale-scales {cfg.WSC_SCALES} '
+                       f'-niter {cfg.WSC_BLIND_NITER} '
+                       f'-gain {cfg.WSC_GAIN} -mgain {cfg.WSC_MGAIN} '
+                       f'-channels-out {cfg.WSC_BLIND_CHANNELSOUT} '
+                       f'-fit-spectral-pol {cfg.WSC_FITSPECTRALPOL} '
+                       '-join-channels '
+                       '-circular-beam '
+                       f'-threshold {cfg.WSC_BLIND_THRESHOLD} '
+                       '-pol I '
+                       f'{myms}')
+                syscall = prefix + cmd + '\n\n'
                 step['syscall'] = syscall
                 steps.append(step)
                 n += 1
@@ -194,8 +199,15 @@ def main():
                 step['comment'] = 'Make cleaning mask for ' + targetname
                 step['dependency'] = n - 1
                 step['id'] = 'MASK0'+code
-                syscall  = CONTAINER_RUNNER+WSCLEAN_CONTAINER+' ' if USE_SINGULARITY else ''
-                syscall += gen.generate_syscall_breizorro(restoredimage = f"{img_prefix}-MFS-image.fits", outfile = f"{img_prefix}-MFS-image.mask.fits")[0]
+                syscall  = CONTAINER_RUNNER+PYTHON3_CONTAINER+' ' if USE_SINGULARITY else ''
+                syscall += (f'python3 {cfg.TOOLS}/pyMakeMask.py '
+                            f'--dilate={cfg.MAKEMASK_DILATION} '
+                            f'--boxsize={cfg.MAKEMASK_BOXSIZE} '
+                            f'--smallbox={cfg.MAKEMASK_SMALLBOX} '
+                            f'--islandsize={cfg.MAKEMASK_ISLANDSIZE} '
+                            f'--threshold={cfg.MAKEMASK_THRESH} '
+                            f'--outfile={img_prefix}-MFS-image.mask.fits '
+                            f'{img_prefix}-MFS-image.fits')
                 step['syscall'] = syscall
                 steps.append(step)
                 n += 1
