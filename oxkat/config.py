@@ -385,7 +385,7 @@ CAL_2GC_PSOLINT = '32s'              # Solution interval for phase-only selfcal 
 CAL_2GC_APSOLINT = 'inf'             # Solution interval for amplitude and phase selfcal (DOES NOTHING IN QC VERSION)
 
 # Quartical
-CAL_2GC_YAML = DATA+'/quartical/2GC_phase.yaml'  # Frequency-dependent, phase-only self-calibration (diagonal terms: XX/YY only)
+CAL_2GC_YAML = DATA+'/quartical/2GC_GC_delaycal.yaml'  # Frequency-dependent, phase-only self-calibration (diagonal terms: XX/YY only)
                                                  # NOTE: This does NOT de-rotate or re-apply parallactic angle corrections.
                                                  # WARNING: Since Stokes Q depends on both XX/YY and parallactic angle,
                                                  # omitting parallactic angle correction could, in principle, affect Q.
