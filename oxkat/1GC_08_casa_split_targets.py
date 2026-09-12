@@ -8,6 +8,7 @@ import time
 import datetime
 import subprocess
 import sys
+from casacore.tables import addImagingColumns
 
 
 exec(open('oxkat/config.py').read())
@@ -32,6 +33,8 @@ for target in target_names:
             usewtspectrum=True,
             realmodelcol=True,
             datacolumn='corrected')
+        
+        addImagingColumns(vis=opms)
 
         flagmanager(vis=opms,
             mode='save',

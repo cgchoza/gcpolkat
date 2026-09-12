@@ -391,7 +391,7 @@ CAL_2GC_YAML = DATA+'/quartical/2GC_GC_delaycal.yaml'  # Frequency-dependent, ph
                                                  # omitting parallactic angle correction could, in principle, affect Q.
                                                  # However, in practice, no significant impact on Stokes Q has been observed in tests.
 
-# These YAML files perform amplitude and phase self-calibration on the full 2x2 Jones matrix (XX, YY, XY, YX).
+# These YAML files perform amplqitude and phase self-calibration on the full 2x2 Jones matrix (XX, YY, XY, YX).
 # Extensive testing indicates that using these options can significantly alter the measured polarized fluxes,
 # likely due to strong instrumental polarization effects from the primary beam response.
 # Without an accurate, full polarization beam model, these options SHOULD NOT BE USED.
