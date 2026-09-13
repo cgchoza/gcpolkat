@@ -8,7 +8,6 @@ import time
 import datetime
 import subprocess
 import sys
-from casacore.tables import addImagingColumns
 
 
 exec(open('oxkat/config.py').read())
