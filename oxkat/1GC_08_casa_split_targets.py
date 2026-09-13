@@ -34,7 +34,7 @@ for target in target_names:
             realmodelcol=True,
             datacolumn='corrected')
         
-        addImagingColumns(vis=opms)
+        clearcal(vis=opms, addmodel=True)
 
         flagmanager(vis=opms,
             mode='save',
