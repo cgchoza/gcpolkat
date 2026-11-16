@@ -184,7 +184,7 @@ def main():
                         nomodel = True,
                         pol = 'I',
                         intervalsout = False,
-                        mfweight = True,
+                        mfweight = False,
                         localrms = False,
                         automask = 10.0,
                         autothreshold = 3.0,

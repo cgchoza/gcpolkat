@@ -185,6 +185,7 @@ def main():
                        f'-channels-out {cfg.WSC_BLIND_CHANNELSOUT} '
                        f'-fit-spectral-pol {cfg.WSC_FITSPECTRALPOL} '
                        '-join-channels '
+                       '-no-mf-weighting '
                        '-circular-beam '
                        f'-threshold {cfg.WSC_BLIND_THRESHOLD} '
                        '-pol I '
@@ -412,7 +413,7 @@ def main():
                     nomodel=True,
                     intervalsout=False,
                     weight=cfg.WSC_WEIGHT_HIGHRES,
-                    mfweight=True,
+                    mfweight=False,
                     tukeytaper=False,
                     minuvl = '',
                     maxuvl = '',

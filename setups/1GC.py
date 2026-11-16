@@ -190,7 +190,7 @@ def main():
                 imsize = cfg.WSC_CAL_IMSIZE,
                 chanout = cfg.WSC_BLIND_CHANNELSOUT,
                 pol='I',
-                mfweight = True,
+                mfweight = False,
                 multiscale = False,
                 joinpolarizations=False,
                 mask = False,

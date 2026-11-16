@@ -1211,16 +1211,9 @@ if pacal_name == '':
                 interp = ['linear','linear','linear','linear','linear'],
                 flagbackup=False)
 
-        # Flag target
-        flagdata(vis=myms,
-            mode='rflag',
-            datacolumn='corrected',
-            field=target, flagbackup=False)
-
-        flagdata(vis=myms,
-            mode='tfcrop',
-            datacolumn='corrected',
-            field=target, flagbackup=False)
+        # No rflag/tfcrop on the corrected target data (removed 2026-11-05): on Galactic Centre fields the short
+        # baselines are already ~55% flagged by the basic flags, so CASA's default flag extension (growfreq/growtime 50%)
+        # flagged them entirely (<200 m lost on GC22 and GC15). Target RFI flagging is left to 2GC.
 
     # ---- Save flags
 
@@ -1297,16 +1290,9 @@ for i in range(0,len(targets)):
                 interp = ['linear','linear','linear','linear','linear'] + cross_interp,
                 flagbackup=False)
 
-    # Flag target
-    flagdata(vis=myms,
-        mode='rflag',
-        datacolumn='corrected',
-        field=target, flagbackup=False)
-
-    flagdata(vis=myms,
-        mode='tfcrop',
-        datacolumn='corrected',
-        field=target, flagbackup=False)
+    # No rflag/tfcrop on the corrected target data (removed 2026-11-05): on Galactic Centre fields the short
+    # baselines are already ~55% flagged by the basic flags, so CASA's default flag extension (growfreq/growtime 50%)
+    # flagged them entirely (<200 m lost on GC22 and GC15). Target RFI flagging is left to 2GC.
 
 # ---- Apply aggressive flags if desired
 if CAL_1GC_AGGRESSIVE_FLAGS and CAL_1GC_BL_FREQS != []:
